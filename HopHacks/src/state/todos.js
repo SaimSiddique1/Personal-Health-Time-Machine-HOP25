@@ -17,18 +17,19 @@ export async function setTodos(list) {
 
 export async function addTodoFromCard(card) {
   const list = await getTodos();
-  const exists = list.some(t => t.actionId === card.actionId);
+  const exists = list.some((t) => t.actionId === card.actionId);
   if (exists) return list;
+
   const next = [
     {
       actionId: card.actionId,
-      title: card.title?.replace(/^Try this:\s*/i,'') || "Action",
+      title: (card.title || "").replace(/^Try this:\s*/i, "") || "Action",
       note: card.body || "",
       chips: card.metric_callouts || [],
       done: false,
-      ts: Date.now()
+      ts: Date.now(),
     },
-    ...list
+    ...list,
   ];
   await setTodos(next);
   return next;
@@ -36,14 +37,16 @@ export async function addTodoFromCard(card) {
 
 export async function toggleTodo(actionId) {
   const list = await getTodos();
-  const next = list.map(t => t.actionId === actionId ? {...t, done: !t.done} : t);
+  const next = list.map((t) =>
+    t.actionId === actionId ? { ...t, done: !t.done } : t
+  );
   await setTodos(next);
   return next;
 }
 
 export async function removeTodo(actionId) {
   const list = await getTodos();
-  const next = list.filter(t => t.actionId !== actionId);
+  const next = list.filter((t) => t.actionId !== actionId);
   await setTodos(next);
   return next;
 }

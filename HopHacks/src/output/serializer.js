@@ -1,9 +1,20 @@
-import { refineToCards } from "./mockRefiner";
+// REPLACE the previous serializer with this async version
+import { refineWithGemini } from "./geminiRefiner";
+import { partitionPayload } from "./partition"; // to provide extremes context (optional)
 
-export function toAppJson(engineOutput, paletteName = "soft_pastel") {
-  const cards = refineToCards(engineOutput.triggers);
+export async function toAppJsonAsync(engineOutput, palette = "soft_pastel", existingPayloadForContext = null) {
+  // Optional: pass extremes/todos context to the LLM to help it prioritize
+  const context = existingPayloadForContext
+    ? partitionPayload(existingPayloadForContext)
+    : { extremes: [], suggestions: [] };
+
+  const cards = await refineWithGemini(
+    { triggers: engineOutput.triggers, extremes: context.extremes, todos: [] },
+    palette
+  );
+
   return {
-    meta: { version: "1.0", palette: paletteName, disclaimer: "Wellness insights only; not medical advice." },
+    meta: { version: "1.0", palette, disclaimer: "Wellness insights only; not medical advice." },
     drivers: engineOutput.drivers,
     cards
   };
