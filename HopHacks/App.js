@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import LocationPermissionScreen from "./src/screens/Permissions/LocationPermissionScreen";
@@ -7,8 +6,7 @@ import CalendarPermissionScreen from "./src/screens/Permissions/CalendarPermissi
 import DashboardScreen from "./src/screens/DashboardScreen"; // already exists
 
 const Stack = createNativeStackNavigator();
-=======
-// App.js
+
 import React from "react";
 import RootNavigator from "./src/navigation/RootNavigator";
 import * as TaskManager from 'expo-task-manager';
@@ -39,7 +37,6 @@ TaskManager.defineTask(LOCATION_TASK, ({ data, error }) => {
     });
   }
 })();
->>>>>>> Stashed changes
 
 export default function App() {
   return (
