@@ -1,20 +1,15 @@
-import React, { useState, useEffect } from "react";
-import { SafeAreaView, View, Text, Pressable, ScrollView, StyleSheet, Alert } from "react-native";
+import React from "react";
+import { SafeAreaView, View, Text, Pressable, ScrollView, StyleSheet } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Location from 'expo-location';
 
 import { scenarios } from "../data/scenarios";
 import { runRiskEngine } from "../engine/engine";
 import { toAppJson } from "../output/serializer";
 import { partitionPayload } from "../output/partition";
 
-const AIRNOW_KEY = 'E1B651E0-0ED4-4D1F-9D2F-2B19E2C6D302';
-
 export default function DashboardScreen() {
   const [scenarioKey, setScenarioKey] = React.useState("low-sleep-high-aqi");
   const [payload, setPayload] = React.useState(null);
-  const [airQuality, setAirQuality] = useState(null);
-  const [errorMsg, setErrorMsg] = useState(null);
   const sections = partitionPayload(payload || { cards: [] });
 
   const runScenario = async () => {
@@ -28,38 +23,6 @@ export default function DashboardScreen() {
     const finalJson = toAppJson(engineOutput, "soft_pastel");
     setPayload(finalJson);
   };
-
-  useEffect(() => {
-    const fetchAirNowAQI = async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          setErrorMsg('Location permission denied');
-          return;
-        }
-
-        const { coords } = await Location.getCurrentPositionAsync({});
-        const { latitude, longitude } = coords;
-
-        const url = `https://www.airnowapi.org/aq/observation/latLong/current/?format=application/json&latitude=${latitude}&longitude=${longitude}&distance=25&API_KEY=${AIRNOW_KEY}`;
-        const res = await fetch(url);
-        const data = await res.json();
-
-        if (data.length === 0) {
-          setErrorMsg('No air quality data available for your location');
-          return;
-        }
-
-        const maxAQI = data.reduce((max, obs) => (obs.AQI > max.AQI ? obs : max), { AQI: -1 });
-        setAirQuality({ allReadings: data, worst: maxAQI });
-      } catch (error) {
-        setErrorMsg('Error fetching air quality data');
-        console.error(error);
-      }
-    };
-
-    fetchAirNowAQI();
-  }, []);
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
@@ -79,21 +42,6 @@ export default function DashboardScreen() {
         <Section title="Flagged" items={sections.flagged} />
         <Section title="Extremes" items={sections.extremes} />
         <Section title="Suggestions" items={sections.suggestions} />
-
-        {/* Air Quality Section */}
-        <View style={{ marginTop: 16 }}>
-          <Text style={{ fontWeight: "800", marginBottom: 6 }}>Air Quality Index</Text>
-          {errorMsg ? (
-            <Text style={{ color: 'red' }}>{errorMsg}</Text>
-          ) : airQuality ? (
-            <View>
-              <Text style={{ fontWeight: "700" }}>Worst AQI: {airQuality.worst.AQI}</Text>
-              <Text style={{ opacity: 0.9, marginVertical: 4 }}>Category: {airQuality.worst.Category.Name}</Text>
-            </View>
-          ) : (
-            <Text style={{ opacity: 0.7 }}>Fetching air quality data...</Text>
-          )}
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
