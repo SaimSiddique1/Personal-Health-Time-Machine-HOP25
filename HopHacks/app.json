@@ -20,7 +20,8 @@
           "isIosBackgroundLocationEnabled": true,
           "isAndroidBackgroundLocationEnabled": true
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "ios": {
       "infoPlist": {
@@ -37,9 +38,12 @@
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_BACKGROUND_LOCATION"
-      ]
-    },
+    "ACCESS_BACKGROUND_LOCATION",
+    "READ_EXTERNAL_STORAGE",
+    "WRITE_EXTERNAL_STORAGE"
+  ]
+  
+},
     "web": {
       "favicon": "./assets/favicon.png"
     }

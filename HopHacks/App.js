@@ -3,7 +3,11 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import LocationPermissionScreen from "./src/screens/Permissions/LocationPermissionScreen";
 import HealthPermissionScreen from "./src/screens/Permissions/HealthPermissionScreen";
 import CalendarPermissionScreen from "./src/screens/Permissions/CalendarPermissionScreen";
+<<<<<<< Updated upstream
 import BottomTabNavigator from "./src/navigation/BottomTabNavigator";
+=======
+import BottomTabNavigator from "./src/navigation/BottomTabNavigator"; // already exists
+>>>>>>> Stashed changes
 
 const Stack = createNativeStackNavigator();
 
