@@ -1,6 +1,6 @@
 # HopHack25 — Personal Health Time-Machine
 
-> **A calm, modern health companion** that turns your everyday data (steps, sleep, heart rate, calendar, air quality) into **clear, actionable insights** — plus a playful **“time-machine”** that simulates your future under what-if scenarios.
+> **A calm, modern health companion** that turns your everyday data (steps, sleep, heart rate, calendar, air quality) into **clear, actionable insights**, plus a playful **“time-machine”** that simulates your future under what-if scenarios.
 
 ---
 
