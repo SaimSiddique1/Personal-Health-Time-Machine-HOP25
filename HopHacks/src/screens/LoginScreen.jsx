@@ -30,8 +30,6 @@ export default function LoginScreen() {
       nav.replace("Survey");
     }
   };
-  const onApple = () => console.log("Continue with Apple");
-  const onGoogle = () => console.log("Continue with Google");
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -87,16 +85,7 @@ export default function LoginScreen() {
               </Pressable>
             </View>
 
-            {/* Divider */}
-            <Text style={styles.orText}>Or Continue With</Text>
 
-            {/* Providers */}
-            <Pressable onPress={onApple} style={[styles.providerBtn, styles.appleBtn]}>
-              <Text style={styles.providerText}>Apple</Text>
-            </Pressable>
-            <Pressable onPress={onGoogle} style={[styles.providerBtn, styles.googleBtn]}>
-              <Text style={styles.providerText}>Google</Text>
-            </Pressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

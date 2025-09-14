@@ -4,6 +4,7 @@ import LocationPermissionScreen from "./src/screens/Permissions/LocationPermissi
 import HealthPermissionScreen from "./src/screens/Permissions/HealthPermissionScreen";
 import CalendarPermissionScreen from "./src/screens/Permissions/CalendarPermissionScreen";
 import BottomTabNavigator from "./src/navigation/BottomTabNavigator";
+import LoginScreen from "./src/screens/LoginScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -40,7 +41,8 @@ TaskManager.defineTask(LOCATION_TASK, ({ data, error }) => {
 export default function App() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="LocationPermission" screenOptions={{ headerShown: false }}>
+      <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="LocationPermission" component={LocationPermissionScreen} />
         <Stack.Screen name="HealthPermission" component={HealthPermissionScreen} />
         <Stack.Screen name="CalendarPermission" component={CalendarPermissionScreen} />

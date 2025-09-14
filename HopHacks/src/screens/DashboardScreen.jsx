@@ -1,6 +1,5 @@
-// src/screens/DashboardScreen.jsx
 import React, { useState, useEffect, useMemo } from "react";
-import { Modal, TextInput, Button } from "react-native";
+import { Modal, TextInput } from "react-native";
 import {
   SafeAreaView,
   View,
@@ -8,10 +7,11 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Alert,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
+import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 
 import { scenarios } from "../data/scenarios";
 import { runRiskEngine } from "../engine/engine";
@@ -26,6 +26,83 @@ import {
 
 const AIRNOW_KEY = "E1B651E0-0ED4-4D1F-9D2F-2B19E2C6D302";
 
+/* ========= Design Tokens ========= */
+const T = {
+  bg: "#0f1117",
+  bg2: "#131627",
+  text: "#EAF2FF",
+  textDim: "#AAB6D3",
+  white: "#ffffff",
+  glass: "rgba(255,255,255,0.06)",
+  glassStroke: "rgba(255,255,255,0.14)",
+  chipBg: "rgba(255,255,255,0.08)",
+  chipStroke: "rgba(255,255,255,0.16)",
+  ok: "#9AE6B4",
+  danger: "#ff6b6b",
+
+  /* modern “Apple” gradient */
+  grad: ["#34FFD1", "#5B8EFF", "#BC6FFF", "#FF7AC3"],
+};
+
+/* ========= Small UI Primitives ========= */
+function GradientButton({ title, onPress, style, disabled }) {
+  return (
+    <Pressable onPress={onPress} disabled={disabled} style={[{ borderRadius: 14 }, style]}>
+      <LinearGradient
+        colors={T.grad}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={[
+          {
+            paddingVertical: 14,
+            paddingHorizontal: 18,
+            borderRadius: 14,
+            opacity: disabled ? 0.7 : 1,
+            shadowColor: "#000",
+            shadowOpacity: 0.35,
+            shadowRadius: 16,
+            shadowOffset: { width: 0, height: 10 },
+            elevation: 6,
+          },
+        ]}
+      >
+        <Text style={{ color: "#0B0C10", fontWeight: "800" }}>{title}</Text>
+      </LinearGradient>
+    </Pressable>
+  );
+}
+
+function GlassCard({ children, style }) {
+  return (
+    <View style={[st.card, style]}>
+      <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+      <View style={{ opacity: 1 }}>{children}</View>
+    </View>
+  );
+}
+
+function Pill({ label, onPress, active }) {
+  return (
+    <Pressable onPress={onPress} style={[st.pill, active && st.pillActive]}>
+      <Text style={[st.pillText, active && { color: "#0b0c10", fontWeight: "800" }]}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function Nav({ label, value, tab, setTab }) {
+  const active = tab === value;
+  return (
+    <Pressable onPress={() => setTab(value)} style={[st.nav, active ? st.navActive : st.navIdle]}>
+      <Text style={{ color: active ? "#0b0c10" : T.text, fontWeight: "800" }}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+/* ========= Main Screen ========= */
 export default function DashboardScreen() {
   const [scenarioKey, setScenarioKey] = useState("low-sleep-high-aqi");
   const [showUserInput, setShowUserInput] = useState(false);
@@ -46,18 +123,15 @@ export default function DashboardScreen() {
     hydration: "",
     screenTime: "",
     alcohol: "",
-    smoking: ""
+    smoking: "",
   });
-  // Store user metrics for insights
   const [userMetricsActive, setUserMetricsActive] = useState(null);
   const [payload, setPayload] = useState(null);
 
-  // prod features
   const [tab, setTab] = useState("Insights"); // "Insights" | "ToDo"
   const [todos, setTodos] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // main features
   const [airQuality, setAirQuality] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
 
@@ -65,13 +139,10 @@ export default function DashboardScreen() {
     getTodos().then(setTodos);
   }, []);
 
-  // watch for userMetricsActive changes
   useEffect(() => {
-    console.log("Effect triggered, userMetricsActive:", userMetricsActive);
     if (userMetricsActive) {
-      setPayload(prev => {
+      setPayload((prev) => {
         const merged = { ...prev, userMetrics: userMetricsActive };
-        console.log("Updated payload:", merged);
         return merged;
       });
     }
@@ -85,7 +156,6 @@ export default function DashboardScreen() {
       if (scenarioKey === "user-input" && userMetricsActive) {
         inputs = { ...userMetricsActive };
         engineOutput = runRiskEngine(inputs);
-        // If no triggers, force some mock triggers for demo
         if (!engineOutput.triggers || engineOutput.triggers.length === 0) {
           engineOutput.triggers = [
             {
@@ -94,7 +164,7 @@ export default function DashboardScreen() {
               title: "Heads-up: Sleep debt",
               body: "Short sleep detected. Try a steadier wind-down tonight.",
               metric_callouts: [inputs.sleep ? `Sleep: ${inputs.sleep}h` : "Sleep: N/A"],
-              priority: 1
+              priority: 1,
             },
             {
               category: "Sedentary lifestyle",
@@ -102,15 +172,14 @@ export default function DashboardScreen() {
               title: "Try this: Sedentary lifestyle",
               body: "Long sit time. Add a couple short walks today.",
               metric_callouts: [inputs.sedentary ? `Sedentary: ${inputs.sedentary}h` : "Sedentary: N/A"],
-              priority: 2
-            }
+              priority: 2,
+            },
           ];
         }
       } else {
         inputs = scenarios[scenarioKey];
         engineOutput = runRiskEngine(inputs);
       }
-      // Pass user metrics as context for Gemini if user-input
       const context = scenarioKey === "user-input" && userMetricsActive ? userMetricsActive : null;
       const finalJson = await toAppJsonAsync(engineOutput, "soft_pastel", context);
       setPayload(finalJson);
@@ -128,10 +197,8 @@ export default function DashboardScreen() {
   const onRemoveTodo = async (id) => setTodos(await removeTodo(id));
   const onClear = async () => setTodos(await clearTodos());
 
-  // Build a single deduped list from payload.cards
   const cards = useMemo(() => dedupeCards(payload?.cards || []), [payload]);
 
-  // fetch AirNow AQI
   useEffect(() => {
     const fetchAirNowAQI = async () => {
       try {
@@ -140,7 +207,6 @@ export default function DashboardScreen() {
           setErrorMsg("Location permission denied");
           return;
         }
-
         const { coords } = await Location.getCurrentPositionAsync({});
         const { latitude, longitude } = coords;
 
@@ -148,45 +214,46 @@ export default function DashboardScreen() {
         const res = await fetch(url);
         const data = await res.json();
 
-        if (data.length === 0) {
+        if (!Array.isArray(data) || data.length === 0) {
           setErrorMsg("No air quality data available for your location");
           return;
         }
 
-        const maxAQI = data.reduce(
-          (max, obs) => (obs.AQI > max.AQI ? obs : max),
-          { AQI: -1 }
-        );
+        const maxAQI = data.reduce((max, obs) => (obs.AQI > max.AQI ? obs : max), { AQI: -1 });
         setAirQuality({ allReadings: data, worst: maxAQI });
       } catch (error) {
         setErrorMsg("Error fetching air quality data");
         console.error(error);
       }
     };
-
     fetchAirNowAQI();
   }, []);
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: T.bg }}>
+      {/* Hero gradient header */}
+      <LinearGradient
+        colors={T.grad}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={st.hero}
+      />
       <ScrollView contentContainerStyle={st.wrap}>
-        <Text style={st.h1}>Dashboard</Text>
+        {/* Title over glass chip */}
+        <View style={st.headerRow}>
+          <View style={st.headerChip}>
+            <BlurView intensity={25} tint="dark" style={StyleSheet.absoluteFill} />
+            <Text style={st.h1}>Dashboard</Text>
+          </View>
 
-        {/* top nav */}
-        <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
-          <Nav label="Insights" value="Insights" tab={tab} setTab={setTab} />
-          <Nav label="To-Do" value="ToDo" tab={tab} setTab={setTab} />
+          <View style={st.navRow}>
+            <Nav label="Insights" value="Insights" tab={tab} setTab={setTab} />
+            <Nav label="To-Do" value="ToDo" tab={tab} setTab={setTab} />
+          </View>
         </View>
 
-        {/* scenario picker */}
-        <View
-          style={{
-            flexDirection: "row",
-            flexWrap: "wrap",
-            gap: 8,
-            marginBottom: 8,
-          }}
-        >
+        {/* Scenario picker chips */}
+        <View style={st.pillRow}>
           <Pill
             active={scenarioKey === "low-sleep-high-aqi"}
             onPress={() => setScenarioKey("low-sleep-high-aqi")}
@@ -200,53 +267,6 @@ export default function DashboardScreen() {
             }}
             label="User Input"
           />
-          {/* User Input Modal */}
-          <Modal visible={showUserInput} animationType="slide" transparent>
-            <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#0008" }}>
-              <View style={{ backgroundColor: "#fff", padding: 24, borderRadius: 12, width: 340, maxHeight: 500 }}>
-                <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 12 }}>Enter Your Health Metrics</Text>
-                <ScrollView style={{ maxHeight: 340 }}>
-                  {[
-                    { key: "age", label: "Age", type: "numeric" },
-                    { key: "sex", label: "Sex (M/F/Other)", type: "default" },
-                    { key: "height", label: "Height (cm)", type: "numeric" },
-                    { key: "weight", label: "Weight (kg)", type: "numeric" },
-                    { key: "bloodPressure", label: "Blood Pressure", type: "default" },
-                    { key: "heartRate", label: "Heart Rate", type: "numeric" },
-                    { key: "steps", label: "Steps (per day)", type: "numeric" },
-                    { key: "sleep", label: "Sleep (hours)", type: "numeric" },
-                    { key: "activities", label: "Activities (comma separated)", type: "default" },
-                    { key: "sedentary", label: "Sedentary (hours)", type: "numeric" },
-                    { key: "familyHistory", label: "Family History", type: "default" },
-                    { key: "mood", label: "Mood", type: "default" },
-                    { key: "caffeine", label: "Caffeine (mg)", type: "numeric" },
-                    { key: "hydration", label: "Hydration (cups)", type: "numeric" },
-                    { key: "screenTime", label: "Screen Time (hours)", type: "numeric" },
-                    { key: "alcohol", label: "Alcohol (drinks/week)", type: "numeric" },
-                    { key: "smoking", label: "Smoking (cigs/day)", type: "numeric" }
-                  ].map(({ key, label, type }) => (
-                    <View key={key} style={{ marginBottom: 10 }}>
-                      <Text>{label}:</Text>
-                      <TextInput
-                        style={{ borderWidth: 1, borderColor: "#ccc", padding: 8, borderRadius: 6 }}
-                        keyboardType={type}
-                        value={userMetrics[key]}
-                        onChangeText={v => setUserMetrics(m => ({ ...m, [key]: v }))}
-                      />
-                    </View>
-                  ))}
-                </ScrollView>
-                <Button
-                  title="Save"
-                  onPress={() => {
-                    setShowUserInput(false);
-                    setUserMetricsActive({ ...userMetrics });
-                  }}
-                />
-                <Button title="Cancel" color="#cc0000" onPress={() => setShowUserInput(false)} />
-              </View>
-            </View>
-          </Modal>
           <Pill
             active={scenarioKey === "very-sedentary-high-caffeine"}
             onPress={() => setScenarioKey("very-sedentary-high-caffeine")}
@@ -254,194 +274,203 @@ export default function DashboardScreen() {
           />
         </View>
 
-        <Pressable
+        {/* Run button */}
+        <GradientButton
+          title={loading ? "Refining…" : "Run Rubric"}
           onPress={runScenario}
-          style={[st.btn, loading && { opacity: 0.7 }]}
           disabled={loading}
-        >
-          <Text style={st.btnText}>{loading ? "Refining…" : "Run Rubric"}</Text>
-        </Pressable>
+          style={{ alignSelf: "flex-start", marginBottom: 10 }}
+        />
 
         {tab === "Insights" ? (
           <>
-            <Text style={{ fontWeight: "800", marginBottom: 6 }}>Insights</Text>
+            <Text style={st.sectionTitle}>Insights</Text>
             {cards.length ? (
               cards.map((c, i) => (
-                <View key={makeKey(c, i)} style={st.card}>
-                  <Text style={{ fontWeight: "700" }}>{c.title}</Text>
-                  <Text style={{ opacity: 0.9, marginVertical: 4 }}>
-                    {c.body}
-                  </Text>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      flexWrap: "wrap",
-                      gap: 6,
-                      marginBottom: 8,
-                    }}
-                  >
-                    {(c.metric_callouts || []).map((m, j) => (
-                      <View key={j} style={st.chip}>
-                        <Text style={{ fontSize: 12 }}>{m}</Text>
-                      </View>
-                    ))}
+                <GlassCard key={makeKey(c, i)} style={{ marginBottom: 12 }}>
+                  <View style={{ padding: 14 }}>
+                    <Text style={st.cardTitle}>{c.title}</Text>
+                    <Text style={st.cardBody}>{c.body}</Text>
+
+                    <View style={st.chipsWrap}>
+                      {(c.metric_callouts || []).map((m, j) => (
+                        <View key={j} style={st.chip}>
+                          <Text style={st.chipText}>{m}</Text>
+                        </View>
+                      ))}
+                    </View>
+
+                    {isAction(c) && (
+                      <Pressable onPress={() => addToTodo(c)} style={st.smallBtn}>
+                        <LinearGradient
+                          colors={T.grad}
+                          start={{ x: 0, y: 0.5 }}
+                          end={{ x: 1, y: 0.5 }}
+                          style={st.smallBtnBg}
+                        >
+                          <Text style={{ color: "#0b0c10", fontWeight: "800" }}>
+                            + Add to To-Do
+                          </Text>
+                        </LinearGradient>
+                      </Pressable>
+                    )}
                   </View>
-                  {isAction(c) && (
-                    <Pressable
-                      onPress={() => addToTodo(c)}
-                      style={[st.smallBtn, { backgroundColor: "#1a73e8" }]}
-                    >
-                      <Text style={{ color: "#fff", fontWeight: "700" }}>
-                        + Add to To-Do
-                      </Text>
-                    </Pressable>
-                  )}
-                </View>
+                </GlassCard>
               ))
             ) : (
-              <Text style={{ opacity: 0.7 }}>None</Text>
+              <Text style={st.muted}>None</Text>
             )}
 
-            {/* Air Quality Section */}
-            <View style={{ marginTop: 16 }}>
-              <Text style={{ fontWeight: "800", marginBottom: 6 }}>
-                Air Quality Index
-              </Text>
-              {errorMsg ? (
-                <Text style={{ color: "red" }}>{errorMsg}</Text>
-              ) : airQuality ? (
-                <View>
-                  <Text style={{ fontWeight: "700" }}>
-                    Worst AQI: {airQuality.worst.AQI}
-                  </Text>
-                  <Text style={{ opacity: 0.9, marginVertical: 4 }}>
-                    Category: {airQuality.worst.Category.Name}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={{ opacity: 0.7 }}>Fetching air quality data...</Text>
-              )}
-            </View>
+            {/* Air Quality */}
+            <Text style={[st.sectionTitle, { marginTop: 16 }]}>Air Quality Index</Text>
+            <GlassCard>
+              <View style={{ padding: 14 }}>
+                {errorMsg ? (
+                  <Text style={[st.cardBody, { color: T.danger }]}>{errorMsg}</Text>
+                ) : airQuality ? (
+                  <>
+                    <Text style={st.cardTitle}>
+                      Worst AQI: {airQuality.worst.AQI}
+                    </Text>
+                    <Text style={st.cardBody}>
+                      Category: {airQuality.worst.Category.Name}
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={st.muted}>Fetching air quality data…</Text>
+                )}
+              </View>
+            </GlassCard>
           </>
         ) : (
           <>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginTop: 8,
-              }}
-            >
-              <Text style={{ fontWeight: "800" }}>To-Do</Text>
-              <Pressable onPress={onClear} style={[st.pill, { borderColor: "#ddd" }]}>
-                <Text>Clear</Text>
+            <View style={st.todoHeader}>
+              <Text style={st.sectionTitle}>To-Do</Text>
+              <Pressable onPress={onClear} style={st.clearBtn}>
+                <Text style={{ color: T.text, fontWeight: "700" }}>Clear</Text>
               </Pressable>
             </View>
 
             {todos.length ? (
               todos.map((t) => (
-                <View key={String(t.actionId)} style={st.card}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontWeight: "700",
-                        textDecorationLine: t.done ? "line-through" : "none",
-                      }}
-                    >
-                      {t.title}
-                    </Text>
-                    <View style={{ flexDirection: "row", gap: 8 }}>
-                      <Pressable
-                        onPress={() => onToggleTodo(t.actionId)}
+                <GlassCard key={String(t.actionId)} style={{ marginBottom: 12 }}>
+                  <View style={{ padding: 14 }}>
+                    <View style={st.todoRow}>
+                      <Text
                         style={[
-                          st.smallBtn,
-                          { backgroundColor: "#9AE6B4" },
+                          st.cardTitle,
+                          {
+                            textDecorationLine: t.done ? "line-through" : "none",
+                            opacity: t.done ? 0.6 : 1,
+                          },
                         ]}
                       >
-                        <Text>{t.done ? "Undo" : "Done"}</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => onRemoveTodo(t.actionId)}
-                        style={[st.smallBtn, { backgroundColor: "#eee" }]}
-                      >
-                        <Text>Remove</Text>
-                      </Pressable>
+                        {t.title}
+                      </Text>
+                      <View style={{ flexDirection: "row", gap: 8 }}>
+                        <Pressable onPress={() => onToggleTodo(t.actionId)} style={st.todoBtn}>
+                          <Text style={{ color: "#0b0c10", fontWeight: "800" }}>
+                            {t.done ? "Undo" : "Done"}
+                          </Text>
+                        </Pressable>
+                        <Pressable onPress={() => onRemoveTodo(t.actionId)} style={st.todoBtnGhost}>
+                          <Text style={{ color: T.text }}>Remove</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+
+                    {t.note ? <Text style={st.cardBody}>{t.note}</Text> : null}
+
+                    <View style={st.chipsWrap}>
+                      {(t.chips || []).map((m, j) => (
+                        <View key={j} style={st.chip}>
+                          <Text style={st.chipText}>{m}</Text>
+                        </View>
+                      ))}
                     </View>
                   </View>
-                  {t.note ? (
-                    <Text style={{ opacity: 0.9, marginTop: 6 }}>{t.note}</Text>
-                  ) : null}
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      flexWrap: "wrap",
-                      gap: 6,
-                      marginTop: 6,
-                    }}
-                  >
-                    {(t.chips || []).map((m, j) => (
-                      <View key={j} style={st.chip}>
-                        <Text style={{ fontSize: 12 }}>{m}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
+                </GlassCard>
               ))
             ) : (
-              <Text style={{ opacity: 0.7, marginTop: 8 }}>
+              <Text style={[st.muted, { marginTop: 8 }]}>
                 No tasks yet. Add actions from “Insights”.
               </Text>
             )}
           </>
         )}
       </ScrollView>
+
+      {/* User Input Modal — glass */}
+      <Modal visible={showUserInput} animationType="fade" transparent>
+        <View style={st.modalWrap}>
+          <View style={st.modalCard}>
+            <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+            <Text style={st.modalTitle}>Enter Your Health Metrics</Text>
+            <ScrollView style={{ maxHeight: 380 }}>
+              {[
+                { key: "age", label: "Age", type: "numeric" },
+                { key: "sex", label: "Sex (M/F/Other)", type: "default" },
+                { key: "height", label: "Height (cm)", type: "numeric" },
+                { key: "weight", label: "Weight (kg)", type: "numeric" },
+                { key: "bloodPressure", label: "Blood Pressure", type: "default" },
+                { key: "heartRate", label: "Heart Rate", type: "numeric" },
+                { key: "steps", label: "Steps (per day)", type: "numeric" },
+                { key: "sleep", label: "Sleep (hours)", type: "numeric" },
+                { key: "activities", label: "Activities (comma separated)", type: "default" },
+                { key: "sedentary", label: "Sedentary (hours)", type: "numeric" },
+                { key: "familyHistory", label: "Family History", type: "default" },
+                { key: "mood", label: "Mood", type: "default" },
+                { key: "caffeine", label: "Caffeine (mg)", type: "numeric" },
+                { key: "hydration", label: "Hydration (cups)", type: "numeric" },
+                { key: "screenTime", label: "Screen Time (hours)", type: "numeric" },
+                { key: "alcohol", label: "Alcohol (drinks/week)", type: "numeric" },
+                { key: "smoking", label: "Smoking (cigs/day)", type: "numeric" },
+              ].map(({ key, label, type }) => (
+                <View key={key} style={{ marginBottom: 10 }}>
+                  <Text style={{ color: T.text, marginBottom: 6 }}>{label}</Text>
+                  <View style={st.inputWrap}>
+                    <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+                    <TextInput
+                      placeholderTextColor={T.textDim}
+                      style={st.input}
+                      keyboardType={type}
+                      value={userMetrics[key]}
+                      onChangeText={(v) => setUserMetrics((m) => ({ ...m, [key]: v }))}
+                      placeholder={label}
+                    />
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+              <GradientButton
+                title="Save"
+                onPress={() => {
+                  setShowUserInput(false);
+                  setUserMetricsActive({ ...userMetrics });
+                }}
+                style={{ flex: 1 }}
+              />
+              <Pressable
+                onPress={() => setShowUserInput(false)}
+                style={[st.todoBtnGhost, { flex: 1, justifyContent: "center", alignItems: "center" }]}
+              >
+                <Text style={{ color: T.text, fontWeight: "700" }}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-/* helpers */
+/* ========= helpers ========= */
 function isAction(c) {
   return /action/i.test(c?.type || "") || /^Try this:/i.test(c?.title || "");
 }
 
-function Pill({ label, onPress, active }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[st.pill, active && { backgroundColor: "#9AE6B4" }]}
-    >
-      <Text>{label}</Text>
-    </Pressable>
-  );
-}
-
-function Nav({ label, value, tab, setTab }) {
-  const active = tab === value;
-  return (
-    <Pressable
-      onPress={() => setTab(value)}
-      style={[
-        st.nav,
-        active
-          ? { backgroundColor: "#7BA6FF" }
-          : { backgroundColor: "transparent", borderColor: "#ddd", borderWidth: 1 },
-      ]}
-    >
-      <Text style={{ color: active ? "#fff" : "#111", fontWeight: "700" }}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
-/* de-dupe + key helpers */
 function dedupeCards(list) {
   const seen = new Set();
   const out = [];
@@ -477,42 +506,159 @@ function hashStr(s) {
   return Math.abs(h);
 }
 
+/* ========= styles ========= */
 const st = StyleSheet.create({
-  wrap: { padding: 16 },
-  h1: { fontSize: 22, fontWeight: "800", marginBottom: 8 },
-  btn: {
-    backgroundColor: "#1a73e8",
-    padding: 12,
-    borderRadius: 10,
-    alignSelf: "flex-start",
+  hero: {
+    position: "absolute",
+    top: -120,
+    left: -80,
+    right: -80,
+    height: 280,
+    transform: [{ rotate: "-6deg" }],
+    opacity: 0.18,
   },
-  btnText: { color: "#fff", fontWeight: "800" },
-  pill: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 999,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+  wrap: { padding: 16, paddingTop: 24 },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 14,
   },
-  nav: { borderRadius: 12, paddingVertical: 8, paddingHorizontal: 12 },
-  card: {
-    borderWidth: 1,
-    borderColor: "#eee",
+  headerChip: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderRadius: 14,
-    padding: 12,
-    marginBottom: 10,
-    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: T.glassStroke,
+    backgroundColor: T.glass,
+  },
+  h1: { fontSize: 22, fontWeight: "900", color: T.text },
+
+  navRow: { flexDirection: "row", gap: 8 },
+  nav: {
+    borderRadius: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+  },
+  navIdle: { borderColor: T.glassStroke, backgroundColor: T.glass },
+  navActive: {
+    borderColor: "transparent",
+    backgroundColor: "#ffffff",
+  },
+
+  pillRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 },
+  pill: {
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: T.chipStroke,
+    backgroundColor: T.chipBg,
+  },
+  pillActive: {
+    borderColor: "transparent",
+    backgroundColor: "#ffffff",
+  },
+  pillText: { color: T.text },
+
+  sectionTitle: { color: T.text, fontWeight: "800", marginBottom: 6 },
+
+  card: {
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: T.glassStroke,
+    backgroundColor: T.glass,
+  },
+  cardTitle: { color: T.text, fontWeight: "800", fontSize: 16 },
+  cardBody: { color: T.textDim, marginTop: 4 },
+
+  chipsWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 8,
+    marginBottom: 8,
   },
   chip: {
-    borderWidth: 1,
-    borderColor: "#eee",
     borderRadius: 999,
     paddingVertical: 4,
     paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: T.chipStroke,
+    backgroundColor: T.chipBg,
   },
-  smallBtn: {
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+  chipText: { color: T.text, fontSize: 12 },
+
+  smallBtn: { borderRadius: 12, overflow: "hidden", alignSelf: "flex-start" },
+  smallBtnBg: { paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12 },
+
+  muted: { color: T.textDim },
+
+  todoHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  clearBtn: {
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: T.glassStroke,
+    backgroundColor: T.glass,
+  },
+
+  todoRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  todoBtn: {
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#ffffff",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  todoBtnGhost: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: T.glassStroke,
+    backgroundColor: T.glass,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+
+  /* Modal */
+  modalWrap: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 18,
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 420,
+    borderRadius: 18,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: T.glassStroke,
+    backgroundColor: T.bg,
+    padding: 18,
+  },
+  modalTitle: { color: T.text, fontWeight: "900", fontSize: 18, marginBottom: 12 },
+  inputWrap: {
+    borderRadius: 12,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: T.glassStroke,
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  input: {
+    color: T.text,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
   },
 });
