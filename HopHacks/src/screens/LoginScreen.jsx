@@ -13,6 +13,18 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useNavigation } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
+
+const T = {
+  bg: "#0f1117",
+  text: "#EAF2FF",
+  textDim: "#AAB6D3",
+  stroke: "rgba(255,255,255,0.14)",
+  cardBg: "rgba(255,255,255,0.06)",      // solid “glass”
+  inputBg: "rgba(255,255,255,0.08)",
+  grad: ["#34FFD1", "#5B8EFF", "#BC6FFF", "#FF7AC3"],
+  darkText: "#0b0c10",
+};
 
 export default function LoginScreen() {
   const nav = useNavigation();
@@ -21,37 +33,52 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
 
   const onPrimary = () => {
-    // TODO: wire to real auth
     console.log(mode === "signIn" ? "Sign In" : "Sign Up", { email, password });
-    // Navigate to LocationPermission after "auth"
     if (mode === "signUp") {
       nav.replace("LocationPermission");
     } else {
-      nav.replace("Survey");
+      nav.replace("Survey"); // keep your existing flow
     }
   };
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar style="dark" />
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.scroll}>
+      <StatusBar style="light" />
+      {/* Hero gradient */}
+      <LinearGradient
+        colors={T.grad}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={styles.hero}
+      />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
+      >
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          {/* Title block */}
+          <View style={styles.header}>
+            <Text style={styles.title}>Welcome back</Text>
+            <Text style={styles.subtitle}>Personal Health Time-Machine</Text>
+          </View>
+
+          {/* Auth card */}
           <View style={styles.card}>
             {/* Tabs */}
             <View style={styles.tabsTrack}>
               <Pressable
                 onPress={() => setMode("signIn")}
-                style={[styles.tab, styles.tabLeft, mode === "signIn" ? styles.tabActive : styles.tabInactive]}
+                style={[styles.tab, mode === "signIn" && styles.tabActive]}
               >
-                <Text style={[styles.tabText, mode === "signIn" ? styles.tabTextActive : styles.tabTextInactive]}>
+                <Text style={[styles.tabText, mode === "signIn" && styles.tabTextActive]}>
                   Sign In
                 </Text>
               </Pressable>
               <Pressable
                 onPress={() => setMode("signUp")}
-                style={[styles.tab, styles.tabRight, mode === "signUp" ? styles.tabActive : styles.tabInactive]}
+                style={[styles.tab, mode === "signUp" && styles.tabActive]}
               >
-                <Text style={[styles.tabText, mode === "signUp" ? styles.tabTextActive : styles.tabTextInactive]}>
+                <Text style={[styles.tabText, mode === "signUp" && styles.tabTextActive]}>
                   Sign Up
                 </Text>
               </Pressable>
@@ -60,98 +87,152 @@ export default function LoginScreen() {
             {/* Form */}
             <View style={styles.form}>
               <Text style={styles.label}>Email</Text>
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="you@example.com"
-                placeholderTextColor="#b4b4b4"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                style={styles.input}
-              />
+              <View style={styles.inputWrap}>
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="you@example.com"
+                  placeholderTextColor={T.textDim}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  style={styles.input}
+                />
+              </View>
 
               <Text style={[styles.label, { marginTop: 16 }]}>Password</Text>
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                placeholder="••••••••"
-                placeholderTextColor="#b4b4b4"
-                secureTextEntry
-                style={styles.input}
-              />
+              <View style={styles.inputWrap}>
+                <TextInput
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="••••••••"
+                  placeholderTextColor={T.textDim}
+                  secureTextEntry
+                  style={styles.input}
+                />
+              </View>
 
               <Pressable onPress={onPrimary} style={styles.primaryBtn}>
-                <Text style={styles.primaryBtnText}>{mode === "signIn" ? "Sign In" : "Create Account"}</Text>
+                <LinearGradient
+                  colors={T.grad}
+                  start={{ x: 0, y: 0.5 }}
+                  end={{ x: 1, y: 0.5 }}
+                  style={styles.primaryBtnBg}
+                >
+                  <Text style={styles.primaryBtnText}>
+                    {mode === "signIn" ? "Sign In" : "Create Account"}
+                  </Text>
+                </LinearGradient>
+              </Pressable>
+
+              <Pressable
+                onPress={() => nav.replace("Dashboard")}
+                style={styles.secondaryBtn}
+              >
+                <Text style={styles.secondaryBtnText}>Continue as Guest</Text>
               </Pressable>
             </View>
-
-
           </View>
+
+          {/* Disclaimer */}
+          <Text style={styles.disclaimer}>
+            Not medical advice. For informational purposes only.
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-const BG_BEIGE = "#E4D8CC";
-const CARD_WHITE = "#FFFFFF";
-const TRACK_GRAY = "#E6E6E6";
-const TAB_ACTIVE = "#F3F3F3";
-const INPUT_DARK = "#2D2E30";
-const BTN_DARK = "#2E2E2E";
-const BTN_BLACK = "#0F0F0F";
-const TEXT_PRIMARY = "#0B0B0B";
-const TEXT_MUTED = "#777777";
-
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: BG_BEIGE },
-  scroll: { flexGrow: 1, paddingHorizontal: 18, paddingTop: 48, paddingBottom: 32, alignItems: "center" },
+  safe: { flex: 1, backgroundColor: T.bg },
+  hero: {
+    position: "absolute",
+    top: -140,
+    left: -80,
+    right: -80,
+    height: 320,
+    transform: [{ rotate: "-6deg" }],
+    opacity: 0.20,
+  },
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: 18,
+    paddingTop: 60,
+    paddingBottom: 32,
+    alignItems: "center",
+  },
+
+  header: { width: "100%", marginBottom: 16 },
+  title: { color: T.text, fontWeight: "900", fontSize: 28 },
+  subtitle: { color: T.textDim, marginTop: 6 },
+
   card: {
     width: "100%",
-    backgroundColor: CARD_WHITE,
     borderRadius: 20,
     padding: 16,
-    paddingTop: 14,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
+    borderWidth: 1,
+    borderColor: T.stroke,
+    backgroundColor: T.cardBg,
   },
 
   tabsTrack: {
-    alignSelf: "center",
     flexDirection: "row",
-    backgroundColor: TRACK_GRAY,
-    borderRadius: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: T.stroke,
+    backgroundColor: "rgba(255,255,255,0.05)",
     padding: 6,
-    marginBottom: 18,
-    width: "85%",
+    marginBottom: 16,
   },
-  tab: { flex: 1, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 12 },
-  tabLeft: { marginRight: 6 },
-  tabRight: { marginLeft: 6 },
-  tabActive: { backgroundColor: TAB_ACTIVE },
-  tabInactive: { backgroundColor: "transparent" },
-  tabText: { fontSize: 16, fontWeight: "600" },
-  tabTextActive: { color: TEXT_PRIMARY },
-  tabTextInactive: { color: TEXT_PRIMARY },
+  tab: {
+    flex: 1,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+  },
+  tabActive: {
+    backgroundColor: "#fff",
+  },
+  tabText: { fontSize: 15, fontWeight: "800", color: T.text },
+  tabTextActive: { color: T.darkText },
 
   form: { marginTop: 4 },
-  label: { fontSize: 16, fontWeight: "700", color: TEXT_PRIMARY, marginBottom: 6 },
-  input: { backgroundColor: INPUT_DARK, color: "#fff", borderRadius: 6, height: 54, paddingHorizontal: 12 },
-  primaryBtn: {
-    marginTop: 18,
-    backgroundColor: "#1a73e8",
-    borderRadius: 8,
-    height: 48,
+  label: { fontSize: 14, fontWeight: "800", color: T.text, marginBottom: 6 },
+
+  inputWrap: {
+    borderRadius: 10,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: T.stroke,
+    backgroundColor: T.inputBg,
+  },
+  input: {
+    height: 52,
+    paddingHorizontal: 12,
+    color: T.text,
+    fontSize: 16,
+  },
+
+  primaryBtn: { marginTop: 18, borderRadius: 12, overflow: "hidden" },
+  primaryBtnBg: {
+    height: 52,
     alignItems: "center",
     justifyContent: "center",
   },
-  primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  primaryBtnText: { color: T.darkText, fontWeight: "900", fontSize: 16 },
 
-  orText: { textAlign: "center", color: TEXT_MUTED, marginVertical: 18, fontSize: 16 },
-  providerBtn: { height: 56, borderRadius: 6, alignItems: "center", justifyContent: "center", marginBottom: 14 },
-  appleBtn: { backgroundColor: BTN_DARK },
-  googleBtn: { backgroundColor: BTN_BLACK },
-  providerText: { color: "#fff", fontSize: 18, fontWeight: "600" },
+  secondaryBtn: {
+    marginTop: 10,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: T.stroke,
+    backgroundColor: T.cardBg,
+  },
+  secondaryBtnText: { color: T.text, fontWeight: "800" },
+
+  disclaimer: { color: T.textDim, fontSize: 12, marginTop: 16, textAlign: "center" },
 });

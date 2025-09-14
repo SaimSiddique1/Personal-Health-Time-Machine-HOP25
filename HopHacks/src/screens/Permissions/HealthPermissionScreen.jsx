@@ -1,4 +1,4 @@
-// HealthPermissionScreen.js
+// src/screens/Permissions/HealthPermissionScreen.jsx
 import React, { useMemo, useState } from "react";
 import {
   SafeAreaView,
@@ -11,6 +11,7 @@ import {
   Alert,
   ScrollView,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import Papa from "papaparse";
@@ -25,9 +26,20 @@ const FRIENDLY = {
 
 const PREVIEW_ROWS = 5;
 
+/* ===== Theme (matches the rest of your app) ===== */
+const T = {
+  bg: "#0f1117",
+  text: "#EAF2FF",
+  textDim: "#AAB6D3",
+  stroke: "rgba(255,255,255,0.14)",
+  cardBg: "rgba(255,255,255,0.06)",   // solid “glass”
+  chipBg: "rgba(255,255,255,0.08)",
+  chipStroke: "rgba(255,255,255,0.16)",
+  grad: ["#34FFD1", "#5B8EFF", "#BC6FFF", "#FF7AC3"],
+  darkText: "#0b0c10",
+};
+
 export default function HealthPermissionScreen({ navigation }) {
-  // Now each category is an ARRAY of uploaded items
-  // item shape: { id, jsonPath, name, rows, preview }
   const [items, setItems] = useState({
     steps: [],
     heartRate: [],
@@ -50,12 +62,9 @@ export default function HealthPermissionScreen({ navigation }) {
   );
 
   const processOneFile = async (file, key) => {
-    // Extract usable URI
     const fileUri = file?.uri;
     if (!fileUri) throw new Error("Invalid File URI");
 
-    // Ensure a .csv extension for safer read/parse path
-    // (We keep your copy-then-read approach that worked for you)
     const baseName = file.name || "temp";
     const correctedUri = fileUri.endsWith(".csv")
       ? fileUri
@@ -65,7 +74,6 @@ export default function HealthPermissionScreen({ navigation }) {
       await FileSystem.copyAsync({ from: fileUri, to: correctedUri });
     }
 
-    // Read CSV text
     let csvText;
     try {
       csvText = await FileSystem.readAsStringAsync(
@@ -77,12 +85,12 @@ export default function HealthPermissionScreen({ navigation }) {
       throw new Error("Could not read the selected file.");
     }
 
-    // Parse
     const parsed = Papa.parse(csvText, {
       header: true,
       skipEmptyLines: true,
       dynamicTyping: true,
     });
+
     if (!Array.isArray(parsed.data) || parsed.data.length === 0) {
       throw new Error("No rows found in the selected CSV.");
     }
@@ -90,13 +98,11 @@ export default function HealthPermissionScreen({ navigation }) {
       console.warn("CSV parse warnings:", parsed.errors.slice(0, 3));
     }
 
-    // Persist JSON
     const jsonPath = `${FileSystem.documentDirectory}${key}-${Date.now()}-${sanitizeName(
       baseName
     )}.json`;
     await FileSystem.writeAsStringAsync(jsonPath, JSON.stringify(parsed.data));
 
-    // Build item
     const preview = parsed.data.slice(0, PREVIEW_ROWS);
     const rows = parsed.data.length;
     const item = {
@@ -107,41 +113,28 @@ export default function HealthPermissionScreen({ navigation }) {
       preview,
     };
 
-    // Push into the array for that key
     setItems((prev) => ({
       ...prev,
       [key]: [item, ...(prev[key] || [])],
     }));
 
-      // After processing and saving, update the topic with all CSVs for this key
-      const csvUris = [jsonPath, ...((items[key] || []).map(it => it.jsonPath))];
-      let topicObj = {};
-      updateTopicWithCsvs(csvUris, key, topicObj).then(updated => {
-        // You can now use updated[key] for Gemini insights or further processing
-        // For example, setTopicData(updated) or pass to refineWithGemini
-        // console.log("Updated topic data for", key, updated[key]);
-      });
-
+    // Update topic with all CSV jsonPaths for this key (new first)
+    const csvUris = [jsonPath, ...((items[key] || []).map((it) => it.jsonPath))];
+    let topicObj = {};
+    updateTopicWithCsvs(csvUris, key, topicObj).catch(() => {});
     return rows;
   };
 
   const pickCsvFor = async (key) => {
     try {
       setBusyKey(key);
-
-      // Keep your working picker setup; just enable multiple
       const res = await DocumentPicker.getDocumentAsync({
-        // type intentionally omitted to avoid breaking your current behavior
-        multiple: true, // <- allow selecting multiple files at once
-        // copyToCacheDirectory left as default to preserve your flow
+        multiple: true,
       });
 
-      // Handle cancel across shapes
       if (res?.canceled === true || res?.type === "cancel") return;
 
-      // Normalize to an array of files
       const files = res?.assets ? res.assets : [res].filter(Boolean);
-
       if (!files?.length) return;
 
       let totalAdded = 0;
@@ -196,21 +189,20 @@ export default function HealthPermissionScreen({ navigation }) {
   };
 
   const continueNext = () => {
-    // Example: enforce at least one HR CSV
-    // if (!(items.heartRate && items.heartRate.length)) {
-    //   Alert.alert("Missing file", "Please upload at least one Heart Rate CSV first.");
-    //   return;
-    // }
     navigation?.navigate?.("CalendarPermission");
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Upload Health Data</Text>
-        <Text style={styles.subtitle}>
-          You can add multiple CSVs for each category. (If picking from Drive,
-          download to device first, then select from Files → Downloads.)
+    <SafeAreaView style={st.safe}>
+      {/* Hero glow */}
+      <LinearGradient colors={T.grad} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={st.hero} />
+
+      <ScrollView contentContainerStyle={st.container}>
+        <View style={st.headerChip}>
+          <Text style={st.h1}>Upload Health Data</Text>
+        </View>
+        <Text style={st.subtitle}>
+          Add multiple CSVs per category. If picking from Drive, first download to device, then choose from <Text style={{ fontWeight: "800", color: T.text }}>Files → Downloads</Text>.
         </Text>
 
         {Object.keys(items).map((key) => {
@@ -219,44 +211,45 @@ export default function HealthPermissionScreen({ navigation }) {
           const rowsInKey = arr.reduce((s, it) => s + (it?.rows || 0), 0);
 
           return (
-            <View key={key} style={styles.card}>
-              <Text style={styles.label}>{FRIENDLY[key]}</Text>
+            <View key={key} style={st.card}>
+              <Text style={st.cardTitle}>{FRIENDLY[key]}</Text>
 
-              <View style={styles.row}>
-                <Button
-                  title={busy ? "Processing…" : "Add CSV(s)"}
+              <View style={st.row}>
+                <Pressable
                   onPress={() => (busy ? null : pickCsvFor(key))}
-                  color={Platform.OS === "ios" ? "#007AFF" : "#34a853"}
-                />
+                  style={[st.btnGhost, busy && { opacity: 0.7 }]}
+                >
+                  <Text style={st.btnGhostText}>{busy ? "Processing…" : "Add CSV(s)"}</Text>
+                </Pressable>
+
                 {!!arr.length && (
-                  <Pressable onPress={() => clearAllForKey(key)} style={styles.clearBtn}>
-                    <Text style={styles.clearTxt}>Clear All</Text>
+                  <Pressable onPress={() => clearAllForKey(key)} style={st.btnWarn}>
+                    <Text style={st.btnWarnText}>Clear All</Text>
                   </Pressable>
                 )}
               </View>
 
-              <Text style={styles.meta}>
+              <Text style={st.meta}>
                 {arr.length
                   ? `Saved • ${arr.length} file(s) • ${rowsInKey.toLocaleString()} rows`
                   : "No files uploaded"}
               </Text>
 
-              {/* Render each uploaded file for this key */}
               {arr.map((it) => (
-                <View key={it.id} style={styles.previewBox}>
-                  <View style={styles.fileHeader}>
-                    <Text style={styles.fileName}>{it.name}</Text>
-                    <Pressable onPress={() => removeOne(key, it.id)} style={styles.removeOne}>
-                      <Text style={styles.removeOneTxt}>Remove</Text>
+                <View key={it.id} style={st.previewBox}>
+                  <View style={st.fileHeader}>
+                    <Text style={st.fileName}>{it.name}</Text>
+                    <Pressable onPress={() => removeOne(key, it.id)} style={st.removeOne}>
+                      <Text style={st.removeOneTxt}>Remove</Text>
                     </Pressable>
                   </View>
-                  <Text style={styles.fileMeta}>{it.rows.toLocaleString()} rows</Text>
+                  <Text style={st.fileMeta}>{it.rows.toLocaleString()} rows</Text>
                   {it.preview && (
                     <>
-                      <Text style={styles.previewTitle}>
+                      <Text style={st.previewTitle}>
                         Preview (first {it.preview.length} rows)
                       </Text>
-                      <Text style={styles.previewMono}>
+                      <Text style={st.previewMono}>
                         {JSON.stringify(it.preview, null, 2)}
                       </Text>
                     </>
@@ -267,22 +260,28 @@ export default function HealthPermissionScreen({ navigation }) {
           );
         })}
 
-        <View style={styles.totalRow}>
-          <Text style={styles.totalTxt}>
+        <View style={st.totalRow}>
+          <Text style={st.totalTxt}>
             Total rows stored:{" "}
-            <Text style={{ fontWeight: "900" }}>
+            <Text style={{ fontWeight: "900", color: T.text }}>
               {totalRows.toLocaleString()}
             </Text>
           </Text>
         </View>
 
-        <Pressable style={styles.cta} onPress={continueNext}>
-          <Text style={styles.ctaTxt}>Continue</Text>
+        <Pressable style={st.primaryBtn} onPress={continueNext}>
+          <LinearGradient
+            colors={T.grad}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={st.primaryBtnBg}
+          >
+            <Text style={st.primaryBtnText}>Continue</Text>
+          </LinearGradient>
         </Pressable>
 
-        <Text style={styles.help}>
-          Still see greyed-out Drive files? Use Drive → ︙ → Download to device, then pick
-          from Files → Downloads. We keep your flow and parse/persist CSVs locally.
+        <Text style={st.help}>
+          Still see greyed-out Drive files? In Drive: ︙ → <Text style={{ fontWeight: "800", color: T.text }}>Download</Text> to device, then pick from <Text style={{ fontWeight: "800", color: T.text }}>Files → Downloads</Text>. We parse & store locally.
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -293,75 +292,121 @@ function sanitizeName(name = "") {
   return name.replace(/[^a-z0-9._-]/gi, "_");
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#fff" },
-  container: { padding: 20 },
-  title: { fontSize: 22, fontWeight: "800", textAlign: "center" },
+/* ===== Styles ===== */
+const st = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: T.bg },
+  hero: {
+    position: "absolute",
+    top: -140,
+    left: -80,
+    right: -80,
+    height: 320,
+    transform: [{ rotate: "-6deg" }],
+    opacity: 0.20,
+  },
+  container: { padding: 16, paddingTop: 24 },
+  headerChip: {
+    alignSelf: "flex-start",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: T.stroke,
+    backgroundColor: T.cardBg,
+    marginBottom: 8,
+  },
+  h1: { fontSize: 22, fontWeight: "900", color: T.text },
+
   subtitle: {
-    fontSize: 14,
-    color: "#444",
-    textAlign: "center",
-    marginTop: 6,
-    marginBottom: 18,
+    color: T.textDim,
+    marginBottom: 12,
     lineHeight: 20,
   },
 
   card: {
     marginTop: 14,
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: "#fafafa",
+    borderRadius: 16,
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#e7e7e7",
+    borderColor: T.stroke,
+    backgroundColor: T.cardBg,
+    padding: 14,
   },
-  label: { fontSize: 16, fontWeight: "800", marginBottom: 10 },
+  cardTitle: { color: T.text, fontWeight: "800", marginBottom: 10, fontSize: 16 },
+
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
-  clearBtn: { paddingHorizontal: 12, paddingVertical: 10 },
-  clearTxt: { color: "#cc0000", fontWeight: "700" },
-  meta: { color: "#666", marginTop: 8 },
+
+  btnGhost: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: T.stroke,
+    backgroundColor: T.cardBg,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  btnGhostText: { color: T.text, fontWeight: "800" },
+
+  btnWarn: {
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: "rgba(255,99,99,0.16)",
+    borderWidth: 1,
+    borderColor: "rgba(255,99,99,0.28)",
+  },
+  btnWarnText: { color: "#ff9b9b", fontWeight: "800" },
+
+  meta: { color: T.textDim, marginTop: 8 },
 
   previewBox: {
     marginTop: 10,
-    backgroundColor: "#f2f4f7",
-    borderRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: 12,
     padding: 10,
     borderWidth: 1,
-    borderColor: "#e3e6ec",
+    borderColor: T.chipStroke,
   },
   fileHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  fileName: { color: "#222", fontWeight: "800" },
-  removeOne: { paddingHorizontal: 10, paddingVertical: 6, backgroundColor: "#ffe5e5", borderRadius: 8 },
-  removeOneTxt: { color: "#b00020", fontWeight: "800" },
-  fileMeta: { color: "#666", marginTop: 4 },
+  fileName: { color: T.text, fontWeight: "800" },
+  removeOne: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: "rgba(255,99,99,0.12)",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,99,99,0.22)",
+  },
+  removeOneTxt: { color: "#ff8a8a", fontWeight: "800" },
+  fileMeta: { color: T.textDim, marginTop: 4 },
 
-  previewTitle: { fontWeight: "800", marginTop: 8, marginBottom: 6, color: "#222" },
+  previewTitle: { fontWeight: "800", marginTop: 8, marginBottom: 6, color: T.text },
   previewMono: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 12,
-    color: "#1f2937",
+    color: T.textDim,
   },
 
   totalRow: { marginTop: 16, alignItems: "center" },
-  totalTxt: { color: "#333" },
+  totalTxt: { color: T.textDim },
 
-  cta: {
-    marginTop: 18,
-    backgroundColor: "#34a853",
-    paddingVertical: 14,
-    borderRadius: 10,
+  primaryBtn: { marginTop: 18, borderRadius: 12, overflow: "hidden" },
+  primaryBtnBg: {
+    height: 52,
     alignItems: "center",
+    justifyContent: "center",
   },
-  ctaTxt: { color: "#fff", fontWeight: "800", fontSize: 16 },
+  primaryBtnText: { color: T.darkText, fontWeight: "900", fontSize: 16 },
 
   help: {
-    color: "#666",
+    color: T.textDim,
     fontSize: 12,
     textAlign: "center",
     marginTop: 12,
     lineHeight: 18,
+    marginBottom: 18,
   },
 });
