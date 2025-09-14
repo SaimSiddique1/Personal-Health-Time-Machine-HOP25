@@ -23,8 +23,12 @@ export default function LoginScreen() {
   const onPrimary = () => {
     // TODO: wire to real auth
     console.log(mode === "signIn" ? "Sign In" : "Sign Up", { email, password });
-    // Navigate to Survey after "auth"
-    nav.replace("Survey");
+    // Navigate to LocationPermission after "auth"
+    if (mode === "signUp") {
+      nav.replace("LocationPermission");
+    } else {
+      nav.replace("Survey");
+    }
   };
   const onApple = () => console.log("Continue with Apple");
   const onGoogle = () => console.log("Continue with Google");
