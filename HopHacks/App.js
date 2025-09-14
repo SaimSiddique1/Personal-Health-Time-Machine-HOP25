@@ -1,10 +1,13 @@
 <<<<<<< Updated upstream
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+
+import LoginScreen from "./src/screens/LoginScreen";
 import LocationPermissionScreen from "./src/screens/Permissions/LocationPermissionScreen";
 import HealthPermissionScreen from "./src/screens/Permissions/HealthPermissionScreen";
 import CalendarPermissionScreen from "./src/screens/Permissions/CalendarPermissionScreen";
-import DashboardScreen from "./src/screens/DashboardScreen"; // already exists
+import SurveyScreen from "./src/screens/SurveyScreen";
+import DashboardScreen from "./src/screens/DashboardScreen";
 
 const Stack = createNativeStackNavigator();
 =======
@@ -44,10 +47,19 @@ TaskManager.defineTask(LOCATION_TASK, ({ data, error }) => {
 export default function App() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="LocationPermission" screenOptions={{ headerShown: false }}>
+      <Stack.Navigator initialRouteName="LoginScreen" screenOptions={{ headerShown: false }}>
+        {/* Start with login */}
+        <Stack.Screen name="LoginScreen" component={LoginScreen} />
+
+        {/* Permissions flow */}
         <Stack.Screen name="LocationPermission" component={LocationPermissionScreen} />
         <Stack.Screen name="HealthPermission" component={HealthPermissionScreen} />
         <Stack.Screen name="CalendarPermission" component={CalendarPermissionScreen} />
+
+        {/* Survey after permissions */}
+        <Stack.Screen name="SurveyScreen" component={SurveyScreen} />
+
+        {/* Dashboard as final screen */}
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
       </Stack.Navigator>
     </NavigationContainer>

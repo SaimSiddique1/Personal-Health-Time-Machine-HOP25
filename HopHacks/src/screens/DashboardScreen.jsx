@@ -126,12 +126,19 @@ function Section({ title, items }) {
   );
 }
 
+const BG_BEIGE = "#E8DED3";
+const CARD_WHITE = "#FFFFFF";
+const TRACK_GRAY = "#EAEAEA";
+const BTN_DARK = "#1976F3";
+const TEXT_PRIMARY = "#111";
+const TEXT_MUTED = "#888";
+
 const st = StyleSheet.create({
-  wrap: { padding: 16 },
-  h1: { fontSize: 22, fontWeight: "800", marginBottom: 8 },
-  btn: { backgroundColor: "#1a73e8", padding: 12, borderRadius: 10, alignSelf: "flex-start" },
-  btnText: { color: "#fff", fontWeight: "800" },
-  pill: { borderWidth:1, borderColor:"#ddd", borderRadius: 999, paddingVertical:6, paddingHorizontal:10 },
-  card: { borderWidth:1, borderColor:"#eee", borderRadius: 14, padding: 12, marginBottom: 10, backgroundColor:"#fff" },
-  chip: { borderWidth:1, borderColor:"#eee", borderRadius:999, paddingVertical:4, paddingHorizontal:8 }
+  wrap: { padding: 16, backgroundColor: BG_BEIGE },
+  h1: { fontSize: 24, fontWeight: "800", marginBottom: 16, textAlign: "center", color: TEXT_PRIMARY },
+  btn: { backgroundColor: BTN_DARK, padding: 14, borderRadius: 10, alignSelf: "flex-start" },
+  btnText: { color: CARD_WHITE, fontWeight: "800" },
+  pill: { borderWidth:1, borderColor:TRACK_GRAY, borderRadius: 999, paddingVertical:6, paddingHorizontal:10, backgroundColor: CARD_WHITE },
+  card: { borderWidth:0, borderRadius: 18, padding: 16, marginBottom: 12, backgroundColor:CARD_WHITE, shadowColor: BG_BEIGE, shadowOpacity: 0.10, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
+  chip: { borderWidth:1, borderColor:TRACK_GRAY, borderRadius:999, paddingVertical:4, paddingHorizontal:8, backgroundColor: CARD_WHITE }
 });

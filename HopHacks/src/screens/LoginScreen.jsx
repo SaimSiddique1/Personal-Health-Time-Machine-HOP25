@@ -1,5 +1,5 @@
-// src/screens/LoginScreen.jsx
 import React, { useState } from "react";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   SafeAreaView,
   ScrollView,
@@ -14,13 +14,126 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { useNavigation } from "@react-navigation/native";
 
+const BG_BEIGE = "#E8DED3"; // soft beige background
+const CARD_WHITE = "#FFFFFF"; // pure white card
+const TRACK_GRAY = "#EAEAEA"; // light gray tabs
+const TAB_ACTIVE = "#F5F5F5"; // slightly darker tab
+const INPUT_DARK = "#333333"; // dark gray input
+const BTN_DARK = "#1976F3"; // blue primary button
+const BTN_BLACK = "#222"; // black for Google
+const TEXT_PRIMARY = "#111"; // black text
+const TEXT_MUTED = "#888"; // muted gray text
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: BG_BEIGE },
+  scroll: { flexGrow: 1, paddingHorizontal: 18, paddingTop: 48, paddingBottom: 32, alignItems: "center" },
+  card: {
+    width: "100%",
+    backgroundColor: CARD_WHITE,
+    borderRadius: 24,
+    padding: 24,
+    paddingTop: 22,
+    shadowColor: BG_BEIGE,
+    shadowOpacity: 0.10,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    borderWidth: 0,
+  },
+  tabsTrack: {
+    alignSelf: "center",
+    flexDirection: "row",
+    backgroundColor: TRACK_GRAY,
+    borderRadius: 18,
+    padding: 8,
+    marginBottom: 22,
+    width: "90%",
+  },
+  tab: { flex: 1, height: 44, alignItems: "center", justifyContent: "center", borderRadius: 14 },
+  tabLeft: { marginRight: 8 },
+  tabRight: { marginLeft: 8 },
+  tabActive: { backgroundColor: TAB_ACTIVE },
+  tabInactive: { backgroundColor: TRACK_GRAY },
+  tabText: { fontSize: 18, fontWeight: "700" },
+  tabTextActive: { color: TEXT_PRIMARY },
+  tabTextInactive: { color: TEXT_MUTED },
+  form: { marginTop: 8 },
+  label: { fontSize: 17, fontWeight: "700", color: TEXT_PRIMARY, marginBottom: 8 },
+  input: { backgroundColor: INPUT_DARK, color: TEXT_MUTED, borderRadius: 8, height: 56, paddingHorizontal: 16, fontSize: 16, borderWidth: 0 },
+  primaryBtn: {
+    marginTop: 22,
+    backgroundColor: BTN_DARK,
+    borderRadius: 10,
+    height: 52,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: BTN_DARK,
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  primaryBtnText: { color: "#FFF", fontWeight: "700", fontSize: 18 },
+  orText: { textAlign: "center", color: TEXT_MUTED, marginVertical: 22, fontSize: 17 },
+  providerBtn: { height: 56, borderRadius: 10, alignItems: "center", justifyContent: "center", marginBottom: 18, backgroundColor: INPUT_DARK },
+  appleBtn: { backgroundColor: INPUT_DARK },
+  googleBtn: { backgroundColor: BTN_BLACK },
+  providerText: { color: "#FFF", fontSize: 19, fontWeight: "700" },
+});
+
 export default function LoginScreen() {
   const nav = useNavigation();
   const [mode, setMode] = useState("signIn"); // "signIn" | "signUp"
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const CRED_KEY = 'user_credentials';
+
+
+  const handleSignUp = async () => {
+    if (!email || !password) {
+      setError("Email and password required.");
+      return;
+    }
+    try {
+      // Save credentials as JSON
+      await AsyncStorage.setItem(CRED_KEY, JSON.stringify({ email, password }));
+      const saved = await AsyncStorage.getItem(CRED_KEY);
+      console.log('Saved credentials:', saved);
+      setError("Account created! Please sign in with your new credentials.");
+      setMode("signIn");
+      setEmail("");
+      setPassword("");
+    } catch (e) {
+      setError("Failed to save credentials.");
+    }
+  };
+
+  const handleSignIn = async () => {
+    if (!email || !password) {
+      setError("Email and password required.");
+      return;
+    }
+    try {
+      const credStr = await AsyncStorage.getItem(CRED_KEY);
+      console.log('Loaded credentials:', credStr);
+      console.log('Entered credentials:', { email, password });
+      if (!credStr) {
+        setError("No account found. Please sign up first.");
+        return;
+      }
+      const creds = JSON.parse(credStr);
+      if (creds.email === email && creds.password === password) {
+        setError("");
+  nav.replace("LocationPermission");
+      } else {
+        setError("Incorrect email or password. Please sign up first or check your credentials.");
+      }
+    } catch (e) {
+      setError("Failed to sign in.");
+    }
+  };
 
   const onPrimary = () => {
+<<<<<<< Updated upstream
     // TODO: wire to real auth
     console.log(mode === "signIn" ? "Sign In" : "Sign Up", { email, password });
     // Navigate to LocationPermission after "auth"
@@ -28,10 +141,25 @@ export default function LoginScreen() {
       nav.replace("LocationPermission");
     } else {
       nav.replace("Survey");
+=======
+    if (mode === "signIn") {
+      handleSignIn();
+    } else {
+      handleSignUp();
+>>>>>>> Stashed changes
     }
   };
+
   const onApple = () => console.log("Continue with Apple");
   const onGoogle = () => console.log("Continue with Google");
+
+  // Helper to switch modes and clear fields
+  const switchMode = (newMode) => {
+    setMode(newMode);
+    setEmail("");
+    setPassword("");
+    setError("");
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -42,7 +170,7 @@ export default function LoginScreen() {
             {/* Tabs */}
             <View style={styles.tabsTrack}>
               <Pressable
-                onPress={() => setMode("signIn")}
+                onPress={() => switchMode("signIn")}
                 style={[styles.tab, styles.tabLeft, mode === "signIn" ? styles.tabActive : styles.tabInactive]}
               >
                 <Text style={[styles.tabText, mode === "signIn" ? styles.tabTextActive : styles.tabTextInactive]}>
@@ -50,7 +178,7 @@ export default function LoginScreen() {
                 </Text>
               </Pressable>
               <Pressable
-                onPress={() => setMode("signUp")}
+                onPress={() => switchMode("signUp")}
                 style={[styles.tab, styles.tabRight, mode === "signUp" ? styles.tabActive : styles.tabInactive]}
               >
                 <Text style={[styles.tabText, mode === "signUp" ? styles.tabTextActive : styles.tabTextInactive]}>
@@ -82,6 +210,10 @@ export default function LoginScreen() {
                 style={styles.input}
               />
 
+              {error ? (
+                <Text style={{ color: 'red', marginTop: 8, marginBottom: 4 }}>{error}</Text>
+              ) : null}
+
               <Pressable onPress={onPrimary} style={styles.primaryBtn}>
                 <Text style={styles.primaryBtnText}>{mode === "signIn" ? "Sign In" : "Create Account"}</Text>
               </Pressable>
@@ -104,65 +236,4 @@ export default function LoginScreen() {
   );
 }
 
-const BG_BEIGE = "#E4D8CC";
-const CARD_WHITE = "#FFFFFF";
-const TRACK_GRAY = "#E6E6E6";
-const TAB_ACTIVE = "#F3F3F3";
-const INPUT_DARK = "#2D2E30";
-const BTN_DARK = "#2E2E2E";
-const BTN_BLACK = "#0F0F0F";
-const TEXT_PRIMARY = "#0B0B0B";
-const TEXT_MUTED = "#777777";
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: BG_BEIGE },
-  scroll: { flexGrow: 1, paddingHorizontal: 18, paddingTop: 48, paddingBottom: 32, alignItems: "center" },
-  card: {
-    width: "100%",
-    backgroundColor: CARD_WHITE,
-    borderRadius: 20,
-    padding: 16,
-    paddingTop: 14,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-  },
-
-  tabsTrack: {
-    alignSelf: "center",
-    flexDirection: "row",
-    backgroundColor: TRACK_GRAY,
-    borderRadius: 16,
-    padding: 6,
-    marginBottom: 18,
-    width: "85%",
-  },
-  tab: { flex: 1, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 12 },
-  tabLeft: { marginRight: 6 },
-  tabRight: { marginLeft: 6 },
-  tabActive: { backgroundColor: TAB_ACTIVE },
-  tabInactive: { backgroundColor: "transparent" },
-  tabText: { fontSize: 16, fontWeight: "600" },
-  tabTextActive: { color: TEXT_PRIMARY },
-  tabTextInactive: { color: TEXT_PRIMARY },
-
-  form: { marginTop: 4 },
-  label: { fontSize: 16, fontWeight: "700", color: TEXT_PRIMARY, marginBottom: 6 },
-  input: { backgroundColor: INPUT_DARK, color: "#fff", borderRadius: 6, height: 54, paddingHorizontal: 12 },
-  primaryBtn: {
-    marginTop: 18,
-    backgroundColor: "#1a73e8",
-    borderRadius: 8,
-    height: 48,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-
-  orText: { textAlign: "center", color: TEXT_MUTED, marginVertical: 18, fontSize: 16 },
-  providerBtn: { height: 56, borderRadius: 6, alignItems: "center", justifyContent: "center", marginBottom: 14 },
-  appleBtn: { backgroundColor: BTN_DARK },
-  googleBtn: { backgroundColor: BTN_BLACK },
-  providerText: { color: "#fff", fontSize: 18, fontWeight: "600" },
-});
+// Remove any duplicate imports or code below this line
