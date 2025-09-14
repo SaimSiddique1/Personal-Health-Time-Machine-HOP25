@@ -1,4 +1,40 @@
+// Batch process: Parse multiple CSVs and update a topic with extracted info
+export async function updateTopicWithCsvs(csvUris, topicKey, topicObj) {
+  if (!Array.isArray(csvUris) || !topicKey || !topicObj) return topicObj;
+  let allRows = [];
+  for (const uri of csvUris) {
+    const rows = await readHealthCsv(uri);
+    if (Array.isArray(rows) && rows.length) {
+      allRows = allRows.concat(rows);
+    }
+  }
+  // Update topicObj[topicKey] with all parsed rows
+  return {
+    ...topicObj,
+    [topicKey]: allRows,
+  };
+}
 import runChat from "../config/gemini";
+import Papa from "papaparse";
+import * as FileSystem from "expo-file-system/legacy";
+// Utility: Read and parse a health metric CSV file, returning array of objects
+export async function readHealthCsv(csvUri) {
+  try {
+    const csvText = await FileSystem.readAsStringAsync(csvUri, { encoding: FileSystem.EncodingType.UTF8 });
+    const parsed = Papa.parse(csvText, {
+      header: true,
+      skipEmptyLines: true,
+      dynamicTyping: true,
+    });
+    if (!Array.isArray(parsed.data) || parsed.data.length === 0) {
+      throw new Error("No rows found in the selected CSV.");
+    }
+    return parsed.data;
+  } catch (e) {
+    console.error("Error reading/parsing CSV:", e);
+    return [];
+  }
+}
 import { refineToCards as mockRefiner } from "./mockRefiner";
 
 const ALLOWED = new Set([
@@ -9,12 +45,18 @@ const ALLOWED = new Set([
   "Social isolation","GERD (acid reflux)"
 ]);
 
-export async function refineWithGemini({ triggers, extremes = [], todos = [] }, palette = "soft_pastel") {
+export async function refineWithGemini({ triggers, extremes = [], todos = [], csvData = [] }, palette = "soft_pastel") {
   // Trim + dedupe triggers (keep ≤12)
+  // Merge triggers and csvData (if any)
+  const allTriggers = Array.isArray(triggers) ? [...triggers] : [];
+  if (Array.isArray(csvData) && csvData.length) {
+    allTriggers.push(...csvData);
+  }
+  // Deduplicate and trim to ≤12
   const uniq = new Set();
   const top = [];
-  for (const t of triggers) {
-    const k = `${t.category}|${t.type}|${t.severity}|${(t.metric_callouts||[]).join(",")}`;
+  for (const t of allTriggers) {
+    const k = `${t.category}|${t.type}|${t.severity||""}|${(t.metric_callouts||[]).join(",")}`;
     if (uniq.has(k)) continue;
     uniq.add(k);
     top.push(t);
@@ -23,15 +65,35 @@ export async function refineWithGemini({ triggers, extremes = [], todos = [] }, 
 
   const system = `
 You are LifeLens’ card refiner. You receive rule-based wellness triggers.
-Return 4–6 JSON objects only (no prose), each shaped as:
-{ "category": "<one of the 25>", "type": "insight|action|alert", "title": "…", "body": "…", "metric_callouts": ["…"], "priority": <number> }
+Return 4–6 JSON objects ONLY (no prose, no explanation, no markdown, no extra text), each shaped as:
+{
+  "category": "<one of the 25>",
+  "type": "insight|action|alert",
+  "title": "…",
+  "body": "…",
+  "metric_callouts": ["…"],
+  "priority": <number>,
+  "today_metrics": [ { "metric": "…", "value": <number> } ],
+  "future_metrics": [ { "year": <number>, "month": <number>, "metric": "…", "value": <number> } ],
+  "risk_changes": [ { "risk": "…", "change": "increase|decrease|stable", "reason": "…" } ],
+  "things_to_monitor": ["…"]
+}
 
-Hard rules:
-- No medical advice or diagnosis; wellness tone only.
-- Category MUST be one of the 25 provided. Do not invent new categories.
-- Use the triggers' facts. Keep metric_callouts truthful and brief.
-- Titles ≤ 60 chars. 1–2 sentence bodies. Prioritize “doable today” actions.
-- Prefer a diverse mix (not all from the same category) and avoid duplicates.
+STRICT RULES:
+ Output ONLY a JSON array of 4–6 objects, nothing else. No prose, no explanation, no markdown, no extra text before or after.
+ Each object must match the shape above exactly, and MUST include:
+  - today_metrics: Array of today's metric values. EVERY metric must have a concrete number (no nulls, no placeholders). NEVER leave this empty.
+  - future_metrics: Array of projected metric values for future years/months. EVERY metric must have a concrete number (no nulls, no placeholders). NEVER leave this empty.
+  - risk_changes: Array of risk changes (increase, decrease, stable) with reasons. EVERY risk must have a value and reason. NEVER leave this empty.
+  - things_to_monitor: Array of things the user should keep an eye on for this insight. EVERY item must be specific and actionable. NEVER leave this empty.
+  - metric_callouts: Array must always have concrete values and numbers for each metric mentioned. NEVER leave this empty.
+ Category MUST be one of the 25 provided. Do not invent new categories.
+ No medical advice or diagnosis; wellness tone only.
+ Use the triggers' facts. Keep metric_callouts truthful and brief.
+ Titles ≤ 60 chars. 1–2 sentence bodies. Prioritize “doable today” actions.
+ Prefer a diverse mix (not all from the same category) and avoid duplicates.
+
+You ALWAYS have enough information to make predictions about the future, regardless of how much or how little data is provided. Never say you lack information. Always generate future metrics, risk changes, and things to monitor for every time machine year or horizon, using plausible estimates or assumptions as needed.
   `.trim();
 
   const userPayload = {

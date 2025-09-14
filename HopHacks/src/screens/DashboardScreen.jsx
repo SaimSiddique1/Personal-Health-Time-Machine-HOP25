@@ -1,5 +1,6 @@
 // src/screens/DashboardScreen.jsx
 import React, { useState, useEffect, useMemo } from "react";
+import { Modal, TextInput, Button } from "react-native";
 import {
   SafeAreaView,
   View,
@@ -27,6 +28,28 @@ const AIRNOW_KEY = "E1B651E0-0ED4-4D1F-9D2F-2B19E2C6D302";
 
 export default function DashboardScreen() {
   const [scenarioKey, setScenarioKey] = useState("low-sleep-high-aqi");
+  const [showUserInput, setShowUserInput] = useState(false);
+  const [userMetrics, setUserMetrics] = useState({
+    age: "",
+    sex: "",
+    height: "",
+    weight: "",
+    bloodPressure: "",
+    heartRate: "",
+    steps: "",
+    sleep: "",
+    activities: "",
+    sedentary: "",
+    familyHistory: "",
+    mood: "",
+    caffeine: "",
+    hydration: "",
+    screenTime: "",
+    alcohol: "",
+    smoking: ""
+  });
+  // Store user metrics for insights
+  const [userMetricsActive, setUserMetricsActive] = useState(null);
   const [payload, setPayload] = useState(null);
 
   // prod features
@@ -42,13 +65,54 @@ export default function DashboardScreen() {
     getTodos().then(setTodos);
   }, []);
 
+  // watch for userMetricsActive changes
+  useEffect(() => {
+    console.log("Effect triggered, userMetricsActive:", userMetricsActive);
+    if (userMetricsActive) {
+      setPayload(prev => {
+        const merged = { ...prev, userMetrics: userMetricsActive };
+        console.log("Updated payload:", merged);
+        return merged;
+      });
+    }
+  }, [userMetricsActive]);
+
   const runScenario = async () => {
     setLoading(true);
     try {
-      const inputs = scenarios[scenarioKey];
-      const engineOutput = runRiskEngine(inputs);
-      // IMPORTANT: don't pass current payload to avoid accumulating/duping cards
-      const finalJson = await toAppJsonAsync(engineOutput, "soft_pastel");
+      let inputs;
+      let engineOutput;
+      if (scenarioKey === "user-input" && userMetricsActive) {
+        inputs = { ...userMetricsActive };
+        engineOutput = runRiskEngine(inputs);
+        // If no triggers, force some mock triggers for demo
+        if (!engineOutput.triggers || engineOutput.triggers.length === 0) {
+          engineOutput.triggers = [
+            {
+              category: "Sleep debt",
+              type: "insight",
+              title: "Heads-up: Sleep debt",
+              body: "Short sleep detected. Try a steadier wind-down tonight.",
+              metric_callouts: [inputs.sleep ? `Sleep: ${inputs.sleep}h` : "Sleep: N/A"],
+              priority: 1
+            },
+            {
+              category: "Sedentary lifestyle",
+              type: "action",
+              title: "Try this: Sedentary lifestyle",
+              body: "Long sit time. Add a couple short walks today.",
+              metric_callouts: [inputs.sedentary ? `Sedentary: ${inputs.sedentary}h` : "Sedentary: N/A"],
+              priority: 2
+            }
+          ];
+        }
+      } else {
+        inputs = scenarios[scenarioKey];
+        engineOutput = runRiskEngine(inputs);
+      }
+      // Pass user metrics as context for Gemini if user-input
+      const context = scenarioKey === "user-input" && userMetricsActive ? userMetricsActive : null;
+      const finalJson = await toAppJsonAsync(engineOutput, "soft_pastel", context);
       setPayload(finalJson);
     } finally {
       setLoading(false);
@@ -129,10 +193,60 @@ export default function DashboardScreen() {
             label="Low Sleep + High AQI"
           />
           <Pill
-            active={scenarioKey === "balanced"}
-            onPress={() => setScenarioKey("balanced")}
-            label="Balanced"
+            active={scenarioKey === "user-input"}
+            onPress={() => {
+              setScenarioKey("user-input");
+              setShowUserInput(true);
+            }}
+            label="User Input"
           />
+          {/* User Input Modal */}
+          <Modal visible={showUserInput} animationType="slide" transparent>
+            <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#0008" }}>
+              <View style={{ backgroundColor: "#fff", padding: 24, borderRadius: 12, width: 340, maxHeight: 500 }}>
+                <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 12 }}>Enter Your Health Metrics</Text>
+                <ScrollView style={{ maxHeight: 340 }}>
+                  {[
+                    { key: "age", label: "Age", type: "numeric" },
+                    { key: "sex", label: "Sex (M/F/Other)", type: "default" },
+                    { key: "height", label: "Height (cm)", type: "numeric" },
+                    { key: "weight", label: "Weight (kg)", type: "numeric" },
+                    { key: "bloodPressure", label: "Blood Pressure", type: "default" },
+                    { key: "heartRate", label: "Heart Rate", type: "numeric" },
+                    { key: "steps", label: "Steps (per day)", type: "numeric" },
+                    { key: "sleep", label: "Sleep (hours)", type: "numeric" },
+                    { key: "activities", label: "Activities (comma separated)", type: "default" },
+                    { key: "sedentary", label: "Sedentary (hours)", type: "numeric" },
+                    { key: "familyHistory", label: "Family History", type: "default" },
+                    { key: "mood", label: "Mood", type: "default" },
+                    { key: "caffeine", label: "Caffeine (mg)", type: "numeric" },
+                    { key: "hydration", label: "Hydration (cups)", type: "numeric" },
+                    { key: "screenTime", label: "Screen Time (hours)", type: "numeric" },
+                    { key: "alcohol", label: "Alcohol (drinks/week)", type: "numeric" },
+                    { key: "smoking", label: "Smoking (cigs/day)", type: "numeric" }
+                  ].map(({ key, label, type }) => (
+                    <View key={key} style={{ marginBottom: 10 }}>
+                      <Text>{label}:</Text>
+                      <TextInput
+                        style={{ borderWidth: 1, borderColor: "#ccc", padding: 8, borderRadius: 6 }}
+                        keyboardType={type}
+                        value={userMetrics[key]}
+                        onChangeText={v => setUserMetrics(m => ({ ...m, [key]: v }))}
+                      />
+                    </View>
+                  ))}
+                </ScrollView>
+                <Button
+                  title="Save"
+                  onPress={() => {
+                    setShowUserInput(false);
+                    setUserMetricsActive({ ...userMetrics });
+                  }}
+                />
+                <Button title="Cancel" color="#cc0000" onPress={() => setShowUserInput(false)} />
+              </View>
+            </View>
+          </Modal>
           <Pill
             active={scenarioKey === "very-sedentary-high-caffeine"}
             onPress={() => setScenarioKey("very-sedentary-high-caffeine")}

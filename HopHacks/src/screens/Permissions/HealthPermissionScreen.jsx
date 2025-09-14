@@ -14,6 +14,7 @@ import {
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import Papa from "papaparse";
+import { updateTopicWithCsvs } from "../../output/geminiRefiner";
 
 const FRIENDLY = {
   steps: "Steps",
@@ -111,6 +112,15 @@ export default function HealthPermissionScreen({ navigation }) {
       ...prev,
       [key]: [item, ...(prev[key] || [])],
     }));
+
+      // After processing and saving, update the topic with all CSVs for this key
+      const csvUris = [jsonPath, ...((items[key] || []).map(it => it.jsonPath))];
+      let topicObj = {};
+      updateTopicWithCsvs(csvUris, key, topicObj).then(updated => {
+        // You can now use updated[key] for Gemini insights or further processing
+        // For example, setTopicData(updated) or pass to refineWithGemini
+        // console.log("Updated topic data for", key, updated[key]);
+      });
 
     return rows;
   };
