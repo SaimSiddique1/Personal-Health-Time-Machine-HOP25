@@ -3,12 +3,11 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import LocationPermissionScreen from "./src/screens/Permissions/LocationPermissionScreen";
 import HealthPermissionScreen from "./src/screens/Permissions/HealthPermissionScreen";
 import CalendarPermissionScreen from "./src/screens/Permissions/CalendarPermissionScreen";
-import DashboardScreen from "./src/screens/DashboardScreen"; // already exists
+import BottomTabNavigator from "./src/navigation/BottomTabNavigator";
 
 const Stack = createNativeStackNavigator();
 
 import React from "react";
-import RootNavigator from "./src/navigation/RootNavigator";
 import * as TaskManager from 'expo-task-manager';
 import * as Location from 'expo-location';
 
@@ -45,7 +44,7 @@ export default function App() {
         <Stack.Screen name="LocationPermission" component={LocationPermissionScreen} />
         <Stack.Screen name="HealthPermission" component={HealthPermissionScreen} />
         <Stack.Screen name="CalendarPermission" component={CalendarPermissionScreen} />
-        <Stack.Screen name="Dashboard" component={DashboardScreen} />
+        <Stack.Screen name="Dashboard" component={BottomTabNavigator} />
       </Stack.Navigator>
     </NavigationContainer>
   );
