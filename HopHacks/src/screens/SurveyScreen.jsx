@@ -1,58 +1,86 @@
+
 import React, { useState } from "react";
-import { SafeAreaView, View, Text, TextInput, Pressable, StyleSheet, ScrollView } from "react-native";
+import { SafeAreaView, View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
+import SurveyStep1Profile from "./Survey/SurveyStep1Profile";
+import SurveyStep2Lifestyle from "./Survey/SurveyStep2Lifestyle";
+import SurveyStep3Medical from "./Survey/SurveyStep3Medical";
+import SurveyStep4Mood from "./Survey/SurveyStep4Mood";
+import SurveyStep5DeviceEnv from "./Survey/SurveyStep5DeviceEnv";
 
 export default function SurveyScreen() {
   const nav = useNavigation();
-  const [age, setAge] = useState("");
-  const [sexAtBirth, setSex] = useState("male");
-  const [heightCm, setHeight] = useState("");
-  const [weightKg, setWeight] = useState("");
-  const [famHTN, setFamHTN] = useState("0");
-  const [famT2D, setFamT2D] = useState("0");
+  const [step, setStep] = useState(1);
+  const [surveyData, setSurveyData] = useState({});
+
+  const next = () => setStep((s) => Math.min(s + 1, 6));
+  const back = () => setStep((s) => Math.max(s - 1, 1));
 
   const save = async () => {
-    const data = {
-      age: Number(age || 0),
-      sexAtBirth,
-      heightCm: Number(heightCm || 0),
-      weightKg: Number(weightKg || 0),
-      famHxHypertension: Number(famHTN || 0),
-      famHxDiabetes: Number(famT2D || 0)
-    };
-    await AsyncStorage.setItem("lifelens_survey_v1", JSON.stringify(data));
+    await AsyncStorage.setItem("lifelens_survey_v1", JSON.stringify(surveyData));
     nav.replace("Dashboard");
   };
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={s.wrap}>
-        <Text style={s.h1}>Quick Survey</Text>
-        <Field label="Age" value={age} onChangeText={setAge} keyboardType="numeric" />
-        <Field label="Sex at birth (male/female)" value={sexAtBirth} onChangeText={setSex} />
-        <Field label="Height (cm)" value={heightCm} onChangeText={setHeight} keyboardType="numeric" />
-        <Field label="Weight (kg)" value={weightKg} onChangeText={setWeight} keyboardType="numeric" />
-        <Field label="Family hx Hypertension (0-2)" value={famHTN} onChangeText={setFamHTN} keyboardType="numeric" />
-        <Field label="Family hx Type 2 Diabetes (0-2)" value={famT2D} onChangeText={setFamT2D} keyboardType="numeric" />
-        <Pressable onPress={save} style={s.btn}><Text style={s.btnText}>Save & Continue</Text></Pressable>
+        <Text style={s.h1}>Personal Health Survey</Text>
+        {step === 1 && (
+          <SurveyStep1Profile
+            data={surveyData}
+            setData={setSurveyData}
+            onNext={next}
+          />
+        )}
+        {step === 2 && (
+          <SurveyStep2Lifestyle
+            data={surveyData}
+            setData={setSurveyData}
+            onNext={next}
+            back={back}
+          />
+        )}
+        {step === 3 && (
+          <SurveyStep3Medical
+            data={surveyData}
+            setData={setSurveyData}
+            onNext={next}
+            back={back}
+          />
+        )}
+        {step === 4 && (
+          <SurveyStep4Mood
+            data={surveyData}
+            setData={setSurveyData}
+            next={next}
+            back={back}
+          />
+        )}
+        {step === 5 && (
+          <SurveyStep5DeviceEnv
+            data={surveyData}
+            setData={setSurveyData}
+            onNext={next}
+            back={back}
+          />
+        )}
+        {step === 6 && (
+          <View style={{ alignItems: "center", marginTop: 32 }}>
+            <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 12 }}>
+              All done! Ready to generate insights.
+            </Text>
+            <Pressable onPress={save} style={s.btn}>
+              <Text style={s.btnText}>Save & Continue</Text>
+            </Pressable>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function Field({ label, ...props }) {
-  return (
-    <View style={{ marginBottom: 12 }}>
-      <Text style={{ fontWeight: "700", marginBottom: 6 }}>{label}</Text>
-      <TextInput
-        {...props}
-        style={{ borderWidth: 1, borderColor: "#ddd", borderRadius: 10, padding: 12 }}
-        placeholderTextColor="#999"
-      />
-    </View>
-  );
-}
+// ...existing code...
 
 const s = StyleSheet.create({
   wrap: { padding: 16 },

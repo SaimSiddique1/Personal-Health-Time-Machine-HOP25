@@ -45,6 +45,7 @@ export default function App() {
         <Stack.Screen name="HealthPermission" component={HealthPermissionScreen} />
         <Stack.Screen name="CalendarPermission" component={CalendarPermissionScreen} />
         <Stack.Screen name="Dashboard" component={BottomTabNavigator} />
+        <Stack.Screen name="Survey" component={require('./src/screens/SurveyScreen.jsx').default} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -1,5 +1,6 @@
 // src/screens/DashboardScreen.jsx
 import React, { useState, useEffect, useMemo } from "react";
+import { useNavigation } from '@react-navigation/native';
 import {
   SafeAreaView,
   View,
@@ -26,6 +27,7 @@ import {
 const AIRNOW_KEY = "E1B651E0-0ED4-4D1F-9D2F-2B19E2C6D302";
 
 export default function DashboardScreen() {
+  const nav = useNavigation();
   const [scenarioKey, setScenarioKey] = useState("low-sleep-high-aqi");
   const [payload, setPayload] = useState(null);
 
@@ -103,10 +105,19 @@ export default function DashboardScreen() {
     fetchAirNowAQI();
   }, []);
 
+  console.log('DEBUG: DashboardScreen render reached');
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={st.wrap}>
-        <Text style={st.h1}>Dashboard</Text>
+        <Text style={st.h1}>Dashboard (Debug)</Text>
+
+        {/* Survey Button */}
+        <Pressable
+          style={{ backgroundColor: '#E8DED3', borderRadius: 16, padding: 16, marginBottom: 16, alignItems: 'center' }}
+          onPress={() => nav.navigate('Survey')}
+        >
+          <Text style={{ color: '#333', fontWeight: '700', fontSize: 18 }}>Complete Personal Survey</Text>
+        </Pressable>
 
         {/* top nav */}
         <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>

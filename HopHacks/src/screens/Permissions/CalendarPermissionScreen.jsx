@@ -15,7 +15,7 @@ export default function CalendarPermissionScreen({ navigation }) {
         </Text>
         <Pressable
           style={styles.button}
-          onPress={() => navigation.navigate("Dashboard")}
+          onPress={() => navigation.navigate("Survey")}
         >
           <Text style={styles.buttonText}>Allow Calendar Access</Text>
         </Pressable>
